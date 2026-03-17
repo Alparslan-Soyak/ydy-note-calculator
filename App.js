@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Text, TouchableOpacity, TextInput, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, Text, TouchableOpacity, TextInput, StyleSheet, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const { width, height } = Dimensions.get('window');
 
 export default function App() {
+  // MUTLAK ÇEVİRİ ENGELLEME PROTOKOLÜ
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      // Tarayıcıya sitenin orijinal dilinin Türkçe olduğunu kesin olarak bildirir.
+      document.documentElement.lang = 'tr';
+      
+      // Google Çeviri'nin (ve diğer botların) otomatik çeviri önermesini tamamen yasaklar.
+      const meta = document.createElement('meta');
+      meta.name = 'google';
+      meta.content = 'notranslate';
+      document.head.appendChild(meta);
+    }
+  }, []);
+
   const [selectedCourse, setSelectedCourse] = useState('A');
   const [grades, setGrades] = useState({
     quiz: ['', '', '', ''],
@@ -530,4 +544,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-                                   
