@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, Text, TouchableOpacity, TextInput, StyleSheet, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
 export default function App() {
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      document.documentElement.lang = 'tr';
-      const meta = document.createElement('meta');
-      meta.name = 'google';
-      meta.content = 'notranslate';
-      document.head.appendChild(meta);
-    }
-  }, []);
-
   const [selectedCourse, setSelectedCourse] = useState('A');
   const [grades, setGrades] = useState({
     quiz: ['', '', '', ''],
@@ -29,6 +20,50 @@ export default function App() {
 
   const [results, setResults] = useState(null);
   const [targetNote, setTargetNote] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // 1. ÇEVİRİ ENGELLEME VE VERİ YÜKLEME (Uygulama Başlarken)
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      document.documentElement.lang = 'tr';
+      const meta = document.createElement('meta');
+      meta.name = 'google';
+      meta.content = 'notranslate';
+      document.head.appendChild(meta);
+    }
+    loadSavedData();
+  }, []);
+
+  // 2. VERİ KAYDETME (Notlar veya Kur Değiştiğinde)
+  useEffect(() => {
+    if (isLoaded) {
+      saveData();
+    }
+  }, [grades, selectedCourse]);
+
+  const saveData = async () => {
+    try {
+      const dataToSave = JSON.stringify({ grades, selectedCourse });
+      await AsyncStorage.setItem('@ydy_data', dataToSave);
+    } catch (e) {
+      console.error('Kaydetme hatası:', e);
+    }
+  };
+
+  const loadSavedData = async () => {
+    try {
+      const savedData = await AsyncStorage.getItem('@ydy_data');
+      if (savedData !== null) {
+        const parsed = JSON.parse(savedData);
+        setGrades(parsed.grades);
+        setSelectedCourse(parsed.selectedCourse);
+      }
+    } catch (e) {
+      console.error('Yükleme hatası:', e);
+    } finally {
+      setIsLoaded(true);
+    }
+  };
 
   const calculateGrade = () => {
     const quizValues = grades.quiz.map(v => parseFloat(v) || 0);
@@ -45,12 +80,10 @@ export default function App() {
     const ortalama = quizPoints + vizePoints + writingPoints + sunumPoints + kanaatPoints + odevPoints;
     const minForPass = selectedCourse === 'A' ? 85 : selectedCourse === 'B' ? 80 : 75;
 
-    // Hedef Final Notu Hesaplama (Final kutusu boşsa çalışır)
     if (!grades.final) {
       if (ortalama >= minForPass) {
         setTargetNote({ type: 'pass', text: 'Ortalamanız zaten geçmek için yeterli!' });
       } else {
-        // Formül: (Hedef(65) - Ortalama * 0.4) / 0.6
         const needed = Math.ceil((65 - (ortalama * 0.4)) / 0.6);
         if (needed <= 100) {
           setTargetNote({ type: 'target', text: `Geçmek için Finalden en az ${needed} almalısınız.` });
@@ -80,38 +113,14 @@ export default function App() {
       };
     } else {
       const finalScore = (parseFloat(grades.final) * 0.6 + ortalama * 0.4).toFixed(2);
-
       if (finalScore >= 65) {
-        finalResult = {
-          ortalama: ortalama.toFixed(2),
-          finalNotu: grades.final,
-          finalHesap: finalScore,
-          durum: 'Final ile Geçtiniz ✓',
-          renkClass: 'success',
-          detay: `Final (%60) + Ortalama (%40) = ${finalScore} puan`,
-        };
+        finalResult = { ortalama: ortalama.toFixed(2), finalNotu: grades.final, finalHesap: finalScore, durum: 'Final ile Geçtiniz ✓', renkClass: 'success', detay: `Final (%60) + Ortalama (%40) = ${finalScore} puan` };
       } else if (!grades.butunleme) {
-        finalResult = {
-          ortalama: ortalama.toFixed(2),
-          finalNotu: grades.final,
-          finalHesap: finalScore,
-          durum: 'Bütünlemeye Kaldınız',
-          renkClass: 'danger',
-          detay: `Final sonucunuz ${finalScore} puandır.`,
-        };
+        finalResult = { ortalama: ortalama.toFixed(2), finalNotu: grades.final, finalHesap: finalScore, durum: 'Bütünlemeye Kaldınız', renkClass: 'danger', detay: `Final sonucunuz ${finalScore} puandır.` };
       } else {
         const butScore = (parseFloat(grades.butunleme) * 0.6 + ortalama * 0.4).toFixed(2);
         const isPass = butScore >= 65;
-        finalResult = {
-          ortalama: ortalama.toFixed(2),
-          finalNotu: grades.final,
-          finalHesap: finalScore,
-          butunlemeNotu: grades.butunleme,
-          butunlemeHesap: butScore,
-          durum: isPass ? 'Bütünleme ile Geçtiniz ✓' : 'Dersten Kaldınız ✗',
-          renkClass: isPass ? 'success' : 'fail',
-          detay: `Bütünleme (%60) + Ortalama (%40) = ${butScore} puan`,
-        };
+        finalResult = { ortalama: ortalama.toFixed(2), finalNotu: grades.final, finalHesap: finalScore, butunlemeNotu: grades.butunleme, butunlemeHesap: butScore, durum: isPass ? 'Bütünleme ile Geçtiniz ✓' : 'Dersten Kaldınız ✗', renkClass: isPass ? 'success' : 'fail', detay: `Bütünleme (%60) + Ortalama (%40) = ${butScore} puan` };
       }
     }
     setResults(finalResult);
@@ -128,10 +137,11 @@ export default function App() {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setGrades({ quiz: ['', '', '', ''], vize: ['', '', '', ''], writing: '', sunum: '', kanaat: '', odev: '', final: '', butunleme: '' });
     setResults(null);
     setTargetNote(null);
+    await AsyncStorage.removeItem('@ydy_data');
   };
 
   const getResultColor = (res) => {
@@ -250,4 +260,4 @@ const styles = StyleSheet.create({
   footer: { alignItems: 'center', marginTop: 20, paddingBottom: 20 },
   footerText: { color: '#475569', fontSize: 11 }
 });
-              
+    
