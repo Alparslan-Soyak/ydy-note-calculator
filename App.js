@@ -16,7 +16,6 @@ export default function App() {
   const [targetNote, setTargetNote] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 1. ÇEVİRİ ENGELLEME VE VERİ YÜKLEME
   useEffect(() => {
     if (Platform.OS === 'web') {
       document.documentElement.lang = 'tr';
@@ -28,7 +27,6 @@ export default function App() {
     loadSavedData();
   }, []);
 
-  // 2. CANLI HESAPLAMA VE KAYDETME PROTOKOLÜ
   useEffect(() => {
     if (isLoaded) {
       calculateGrade();
@@ -66,7 +64,6 @@ export default function App() {
     const ortalama = quizPoints + vizePoints + writingPoints + sunumPoints + kanaatPoints + odevPoints;
     const minForPass = selectedCourse === 'A' ? 85 : selectedCourse === 'B' ? 80 : 75;
     
-    // Hedef Final Notu Hesaplama
     if (!grades.final) {
       const needed = Math.ceil((65 - (ortalama * 0.4)) / 0.6);
       if (ortalama >= minForPass) setTargetNote({ type: 'pass', text: 'Ortalamanız geçmek için yeterli!' });
@@ -191,8 +188,8 @@ const styles = StyleSheet.create({
   waBtnT: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   reset: { marginTop: 20, padding: 10, alignItems: 'center' },
   resetT: { color: '#ef4444', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
-  footer: { alignItems: 'center', marginTop: 30, paddingBottom: 30 },
-  footerT: { color: '#475569', fontSize: 11, letterSpacing: 1 },
+  footer: { alignItems: 'center', marginTop: 40, paddingBottom: 40 },
+  footerT: { color: '#64748b', fontSize: 16, fontWeight: '700', letterSpacing: 1.5 },
   flex: { flex: 1 }
 });
               
